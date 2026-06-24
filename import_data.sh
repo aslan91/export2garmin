@@ -332,4 +332,6 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 		rm -f "$switch_temp_path/s400.lock $switch_temp_path/import.lock"
 		break
 	fi
+	# ponytail: sleep to prevent infinite fast-loop CPU/log flooding
+	sleep 10
 done
