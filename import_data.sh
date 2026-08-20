@@ -23,6 +23,8 @@ loop_count=1
 found_count=0
 [[ $1 == "-l" ]] && loop_count=0
 i=0
+miscale_last_retry=0
+omron_last_retry=0
 while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 	((i++))
 
@@ -197,7 +199,8 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 		fi
 
 		# Calculating data and upload to Garmin Connect, print to temp.log file
-		if [[ $(<"$miscale_backup") == *failed* ]] || [[ $(<"$miscale_backup") == *to_import* ]] ; then
+		if [[ $(<"$miscale_backup") == *to_import* ]] || { [[ $(<"$miscale_backup") == *failed* ]] && (( $(date +%s) - miscale_last_retry > 3600 )); } ; then
+			[[ $(<"$miscale_backup") == *failed* ]] && miscale_last_retry=$(date +%s)
 			python3 -B $path/miscale/miscale_export.py > $temp_log 2>&1
 			miscale_import=$(awk -F ": " '/MISCALE /*/ Import data:/{print substr($2,1,10)}' $temp_log)
 			echo "$(timenow) MISCALE|S400 * Calculating data from import $miscale_import, upload to Garmin Connect"
@@ -291,7 +294,8 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 		fi
 
 		# Upload to Garmin Connect, print to temp.log file
-		if [[ $(<"$omron_backup") == *"failed"* ]] || [[ $(<"$omron_backup") == *"to_import"* ]] ; then
+		if [[ $(<"$omron_backup") == *"to_import"* ]] || { [[ $(<"$omron_backup") == *"failed"* ]] && (( $(date +%s) - omron_last_retry > 3600 )); } ; then
+			[[ $(<"$omron_backup") == *"failed"* ]] && omron_last_retry=$(date +%s)
 			if [[ $switch_miscale == "on" ]] ; then
 				python3 -B $path/omron/omron_export.py >> $temp_log 2>&1
 			else python3 -B $path/omron/omron_export.py > $temp_log 2>&1
