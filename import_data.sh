@@ -9,11 +9,22 @@ echo -e "=============================================\n"
 path=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 source <(grep switch_ $path/user/export2garmin.cfg)
 timenow() { date +%d.%m.%Y-%H:%M:%S; }
+cleanup_import_lock() {
+	rm -f "$switch_temp_path/import.lock" "$switch_temp_path/import.pid"
+}
+if ! lockfile -r 0 "$switch_temp_path/import.lock" 2>/dev/null ; then
+	import_pid=$(cat "$switch_temp_path/import.pid" 2>/dev/null)
+	if [[ -n "$import_pid" ]] && ! kill -0 "$import_pid" 2>/dev/null ; then
+		echo "$(timenow) SYSTEM * Stale lock detected (PID $import_pid not running), removing stale lock"
+		cleanup_import_lock
+	fi
+fi
 if lockfile -r 0 "$switch_temp_path/import.lock" 2>/dev/null ; then
 	echo $BASHPID > "$switch_temp_path/import.pid"
-	trap 'rm -f "$switch_temp_path/import.lock" "$switch_temp_path/import.pid"' EXIT
+	trap 'cleanup_import_lock; exit' EXIT TERM INT HUP
 	import_pid=$(cat "$switch_temp_path/import.pid" 2>/dev/null)
-else import_pid=$(cat "$switch_temp_path/import.pid" 2>/dev/null)
+else
+	import_pid=$(cat "$switch_temp_path/import.pid" 2>/dev/null)
 	echo "$(timenow) SYSTEM * Import already in progress, skipping this run, PID is $import_pid"
 	exit 1
 fi
@@ -333,7 +344,7 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 	fi
 	if [[ $loop_count -eq 1 ]] ; then
 		kill $s400_pid 2>/dev/null
-		rm -f "$switch_temp_path/s400.lock $switch_temp_path/import.lock"
+		rm -f "$switch_temp_path/s400.lock" "$switch_temp_path/import.lock"
 		break
 	fi
 	# ponytail: sleep to prevent infinite fast-loop CPU/log flooding
