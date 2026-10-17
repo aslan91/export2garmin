@@ -14,8 +14,8 @@ cleanup_import_lock() {
 }
 if ! lockfile -r 0 "$switch_temp_path/import.lock" 2>/dev/null ; then
 	import_pid=$(cat "$switch_temp_path/import.pid" 2>/dev/null)
-	if [[ -n "$import_pid" ]] && ! kill -0 "$import_pid" 2>/dev/null ; then
-		echo "$(timenow) SYSTEM * Stale lock detected (PID $import_pid not running), removing stale lock"
+	if [[ -z "$import_pid" ]] || ! kill -0 "$import_pid" 2>/dev/null ; then
+		echo "$(timenow) SYSTEM * Stale lock detected (PID '${import_pid:-none}' not running), removing stale lock"
 		cleanup_import_lock
 	fi
 fi
