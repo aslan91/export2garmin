@@ -9,6 +9,15 @@ echo -e "=============================================\n"
 path=$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 source <(grep switch_ $path/user/export2garmin.cfg)
 timenow() { date +%d.%m.%Y-%H:%M:%S; }
+is_import_process_running() {
+	local pid="$1"
+	[[ -n "$pid" && "$pid" =~ ^[0-9]+$ ]] || return 1
+	kill -0 "$pid" 2>/dev/null || return 1
+	if [[ -r "/proc/$pid/cmdline" ]]; then
+		grep -qa "import_data.sh" "/proc/$pid/cmdline" 2>/dev/null || return 1
+	fi
+	return 0
+}
 cleanup_import_lock() {
 	rm -f "$switch_temp_path/import.lock" "$switch_temp_path/import.pid"
 }
@@ -17,20 +26,31 @@ if [[ -e "$switch_temp_path/import.lock" ]]; then
 	if [[ -f "$switch_temp_path/import.pid" ]]; then
 		import_pid=$(cat "$switch_temp_path/import.pid" 2>/dev/null || true)
 	fi
-	if [[ -n "$import_pid" ]] && kill -0 "$import_pid" 2>/dev/null ; then
+	if is_import_process_running "$import_pid"; then
 		echo "$(timenow) SYSTEM * Import already in progress, skipping this run, PID is $import_pid"
 		exit 1
+	fi
+	# Resolve startup race: if lock exists but PID is empty or missing, wait briefly
+	if [[ -z "$import_pid" ]]; then
+		sleep 1
+		if [[ -f "$switch_temp_path/import.pid" ]]; then
+			import_pid=$(cat "$switch_temp_path/import.pid" 2>/dev/null || true)
+		fi
+		if is_import_process_running "$import_pid"; then
+			echo "$(timenow) SYSTEM * Import already in progress, skipping this run, PID is $import_pid"
+			exit 1
+		fi
 	fi
 	echo "$(timenow) SYSTEM * Stale lock detected (PID '${import_pid:-none}' not running), removing stale lock"
 	cleanup_import_lock
 fi
 if lockfile -r 0 "$switch_temp_path/import.lock" 2>/dev/null ; then
-	echo $BASHPID > "$switch_temp_path/import.pid"
+	import_pid=$BASHPID
+	echo "$import_pid" > "$switch_temp_path/import.pid"
 	trap 'cleanup_import_lock; exit' EXIT TERM INT HUP
-	import_pid=$(cat "$switch_temp_path/import.pid" 2>/dev/null || true)
 else
 	import_pid=$(cat "$switch_temp_path/import.pid" 2>/dev/null || true)
-	echo "$(timenow) SYSTEM * Import already in progress, skipping this run, PID is $import_pid"
+	echo "$(timenow) SYSTEM * Import already in progress, skipping this run, PID is ${import_pid:-active}"
 	exit 1
 fi
 

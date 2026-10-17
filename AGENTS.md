@@ -43,8 +43,8 @@ Welcome, Agent! This repository is a fork of `RobertWojtowicz/export2garmin`, cu
    - Preserve upstream directory structures and naming conventions to avoid merge conflicts during upstream rebases.
 
 2. **Process Locking & Stale PID Recovery**:
-   - `import_data.sh` uses `lockfile` with `$switch_temp_path/import.lock` and `import.pid` to guarantee single-instance execution.
-   - **Invariant**: If a previous run crashes, `import_data.sh` must verify whether the stored PID is alive (`kill -0 $pid`). Stale or empty locks must be cleared automatically (`cleanup_import_lock`) to prevent permanent service deadlock on unattended hosts.
+   - **Invariant**: If a previous run crashes, `import_data.sh` must verify whether the stored PID is alive (`kill -0 $pid`) with positive numeric validation, check process command line via `/proc/$pid/cmdline` to prevent stale locking on recycled PIDs, and resolve startup races before clearing locks. Stale locks must be cleared automatically (`cleanup_import_lock`) to prevent permanent service deadlock on unattended hosts.
+
 
 3. **Garmin API Throttling & Retry Backoff**:
    - Failed cloud uploads must be throttled. Never execute rapid retry loops against Garmin endpoints on network or auth errors.
