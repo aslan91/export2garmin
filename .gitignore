@@ -1,0 +1,32 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# Testing & Linting
+.pytest_cache/
+.pytest_temp/
+.ruff_cache/
+.mypy_cache/
+.cache/
+
+# Local logs and runtime data (preserve user/*.cfg and user/*.py)
+*.log
+*.lock
+user/*.csv
+user/temp.log
+.env
+.env.*
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
