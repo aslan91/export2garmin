@@ -66,7 +66,11 @@ class miScale(btle.DefaultDelegate):
                                 else:
                                     weight = (((data[12] & 0xFF) << 8) | (data[11] & 0xFF)) * 0.005
                                 impedance = ((data[10] & 0xFF) << 8) | (data[9] & 0xFF) if hasImpedance else 0
-                                unix_time = int(dt.timestamp(dt.strptime(f"{int((data[3] << 8) | data[2])},{int(data[4])},{int(data[5])},{int(data[6])},{int(data[7])},{int(data[8])}","%Y,%m,%d,%H,%M,%S")))
+                                year = int((data[3] << 8) | data[2])
+                                if year < 2020:
+                                    unix_time = int(dt.now().timestamp())
+                                else:
+                                    unix_time = int(dt.timestamp(dt.strptime(f"{year},{int(data[4])},{int(data[5])},{int(data[6])},{int(data[7])},{int(data[8])}","%Y,%m,%d,%H,%M,%S")))
                                 if hasImpedance:
                                     print(f"{dt.now().strftime('%d.%m.%Y-%H:%M:%S')} MISCALE|OMRON * Reading BLE data complete, finished BLE scan")
                                     print(f"{unix_time};{weight:.1f};{impedance:.0f}")

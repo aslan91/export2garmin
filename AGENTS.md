@@ -57,6 +57,7 @@ Welcome, Agent! This repository is a fork of `RobertWojtowicz/export2garmin`, cu
 5. **BLE Scanning Resilience & Timebase Invariants**:
    - `miscale_ble.py` must wait for stabilized measurements (`isStabilized`) and never abort the BLE scan early on non-impedance packets. Weight readings without bio-impedance (e.g. socks, calluses) must be preserved and exported cleanly with calculated BMI.
    - `import_data.sh` must not apply redundant timezone hour offsets (`miscale_time_zone * 3600`) to timestamps parsed by `dt.timestamp()`, which are already in UTC epoch seconds.
+   - Scale Clock Resilience: Mi Scale 2 loses RTC synchronization upon battery removal and broadcasts timestamps starting in epoch 1970. Both `miscale_ble.py` and `import_data.sh` must recognize uninitialized scale timestamps (`year < 2020` / `unix_time < 1577836800`) and fall back to the host's authoritative NTP timestamp so valid weigh-ins are never dropped due to false unsynchronization.
 
 ---
 

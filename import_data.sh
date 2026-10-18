@@ -202,6 +202,11 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 			if [[ -n $miscale_unixtime ]] ; then
 				source <(grep miscale_time_ $path/user/export2garmin.cfg)
 				miscale_os_unixtime=$(date +%s)
+				if (( miscale_unixtime < 1577836800 )) ; then
+					echo "$(timenow) MISCALE|S400 * Scale clock uninitialized ($miscale_unixtime), using host time ($miscale_os_unixtime)"
+					miscale_read="${miscale_read/${miscale_unixtime}/${miscale_os_unixtime}}"
+					miscale_unixtime=$miscale_os_unixtime
+				fi
 				miscale_offset_unixtime=$(( $miscale_unixtime + $miscale_time_offset ))
 				miscale_time_shift=$(( $miscale_os_unixtime - $miscale_offset_unixtime ))
 				miscale_absolute_shift=${miscale_time_shift#-}
