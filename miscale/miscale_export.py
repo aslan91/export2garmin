@@ -66,21 +66,57 @@ for user in users:
 
 # Calcuating body metrics
 if selected_user is not None and 'email@email.com' not in selected_user.email:
-    lib = Xiaomi_Scale_Body_Metrics.bodyMetrics(weight, selected_user.height, selected_user.age, selected_user.sex, int(miimpedance))
-    bmi = lib.getBMI()
-    percent_fat = lib.getFatPercentage()
-    muscle_mass = lib.getMuscleMass()
-    bone_mass = lib.getBoneMass()
-    percent_hydration = lib.getWaterPercentage()
-    physique_rating = lib.getBodyType()
-    visceral_fat_rating = lib.getVisceralFat()
-    metabolic_age = lib.getMetabolicAge()
-    basal_met = lib.getBMR()
+    if int(miimpedance) > 0:
+        lib = Xiaomi_Scale_Body_Metrics.bodyMetrics(weight, selected_user.height, selected_user.age, selected_user.sex, int(miimpedance))
+        bmi = lib.getBMI()
+        percent_fat = lib.getFatPercentage()
+        muscle_mass = lib.getMuscleMass()
+        bone_mass = lib.getBoneMass()
+        percent_hydration = lib.getWaterPercentage()
+        physique_rating = lib.getBodyType()
+        visceral_fat_rating = lib.getVisceralFat()
+        metabolic_age = lib.getMetabolicAge()
+        basal_met = lib.getBMR()
+        lbm_str = f"{lib.getLBMCoefficient():.1f}"
+        ideal_str = f"{lib.getIdealWeight():.1f}"
+        fat_ideal_str = f"{lib.getFatMassToIdeal()}"
+        protein_str = f"{lib.getProteinPercentage():.1f}"
+        pf_str = f"{percent_fat:.1f}"
+        mm_str = f"{muscle_mass:.1f}"
+        bm_str = f"{bone_mass:.1f}"
+        ph_str = f"{percent_hydration:.1f}"
+        pr_str = f"{physique_rating:.0f}"
+        vf_str = f"{visceral_fat_rating:.0f}"
+        ma_str = f"{metabolic_age:.0f}"
+        bmr_str = f"{basal_met:.0f}"
+    else:
+        bmi = round(weight / ((selected_user.height / 100) ** 2), 1)
+        percent_fat = None
+        muscle_mass = None
+        bone_mass = None
+        percent_hydration = None
+        physique_rating = None
+        visceral_fat_rating = None
+        metabolic_age = None
+        basal_met = None
+        ideal_weight = round(22.0 * ((selected_user.height / 100) ** 2), 1)
+        lbm_str = "0.0"
+        ideal_str = f"{ideal_weight:.1f}"
+        fat_ideal_str = "0.0"
+        protein_str = "0.0"
+        pf_str = "0.0"
+        mm_str = "0.0"
+        bm_str = "0.0"
+        ph_str = "0.0"
+        pr_str = "0"
+        vf_str = "0"
+        ma_str = "0"
+        bmr_str = "0"
 
     # Print to temp.log file
     formatted_time = dt.fromtimestamp(mitdatetime).strftime("%d.%m.%Y;%H:%M")
     print(f"MISCALE * Import data: {mitdatetime};{weight:.1f};{miimpedance:.0f}")
-    print(f"MISCALE * Calculated data: {formatted_time};{weight:.1f};{bmi:.1f};{percent_fat:.1f};{muscle_mass:.1f};{bone_mass:.1f};{percent_hydration:.1f};{physique_rating:.0f};{visceral_fat_rating:.0f};{metabolic_age:.0f};{basal_met:.0f};{lib.getLBMCoefficient():.1f};{lib.getIdealWeight():.1f};{lib.getFatMassToIdeal()};{lib.getProteinPercentage():.1f};{miimpedance:.0f};{selected_user.email};{dt.now().strftime('%d.%m.%Y;%H:%M')}")
+    print(f"MISCALE * Calculated data: {formatted_time};{weight:.1f};{bmi:.1f};{pf_str};{mm_str};{bm_str};{ph_str};{pr_str};{vf_str};{ma_str};{bmr_str};{lbm_str};{ideal_str};{fat_ideal_str};{protein_str};{miimpedance:.0f};{selected_user.email};{dt.now().strftime('%d.%m.%Y;%H:%M')}")
 
     # Login to Garmin Connect
     token_file = os.path.join(path, "user", selected_user.email)

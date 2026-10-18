@@ -41,6 +41,7 @@ class miScale(btle.DefaultDelegate):
         self.unique_dev_addresses = []
         self.ble_adapter_time = int(ble_adapter_time)
         self.ble_adapter_repeat = int(ble_adapter_repeat)
+        self.best_reading = None
     def handleDiscovery(self, dev, isNewDev, isNewData):
         if dev.addr not in self.unique_dev_addresses:
             self.unique_dev_addresses.append(dev.addr)
@@ -51,25 +52,28 @@ class miScale(btle.DefaultDelegate):
                 exit()
             if switch_miscale == 'on' and (switch_s400 == 'off' or switch_omron == 'on'):
                 for (adType, desc, value) in dev.getScanData():
-                    if adType == 22:
+                    if adType == 22 and len(value) >= 30:
                         data = bytes.fromhex(value[4:])
-                        ctrlByte1 = data[1]
-                        hasImpedance = ctrlByte1 & (1<<1)
-                        if hasImpedance:
-
-                            # lbs to kg unit conversion
-                            if value[4:6] == '03':
-                                lb_weight = int((value[28:30] + value[26:28]), 16) * 0.01
-                                weight = round(lb_weight / 2.2046, 1)
-                            else:
-                                weight = (((data[12] & 0xFF) << 8) | (data[11] & 0xFF)) * 0.005
-                            impedance = ((data[10] & 0xFF) << 8) | (data[9] & 0xFF)
-                            unix_time = int(dt.timestamp(dt.strptime(f"{int((data[3] << 8) | data[2])},{int(data[4])},{int(data[5])},{int(data[6])},{int(data[7])},{int(data[8])}","%Y,%m,%d,%H,%M,%S")))
-                            print(f"{dt.now().strftime('%d.%m.%Y-%H:%M:%S')} MISCALE|OMRON * Reading BLE data complete, finished BLE scan")
-                            print(f"{unix_time};{weight:.1f};{impedance:.0f}")
-                        else:
-                            print(f"{dt.now().strftime('%d.%m.%Y-%H:%M:%S')} MISCALE|OMRON * Reading BLE data incomplete, finished BLE scan")
-                        exit()
+                        if len(data) >= 13:
+                            ctrlByte1 = data[1]
+                            isStabilized = bool(ctrlByte1 & (1 << 5))
+                            hasImpedance = bool(ctrlByte1 & (1 << 1))
+                            if isStabilized:
+                                # lbs to kg unit conversion
+                                if value[4:6] == '03':
+                                    lb_weight = int((value[28:30] + value[26:28]), 16) * 0.01
+                                    weight = round(lb_weight / 2.2046, 1)
+                                else:
+                                    weight = (((data[12] & 0xFF) << 8) | (data[11] & 0xFF)) * 0.005
+                                impedance = ((data[10] & 0xFF) << 8) | (data[9] & 0xFF) if hasImpedance else 0
+                                unix_time = int(dt.timestamp(dt.strptime(f"{int((data[3] << 8) | data[2])},{int(data[4])},{int(data[5])},{int(data[6])},{int(data[7])},{int(data[8])}","%Y,%m,%d,%H,%M,%S")))
+                                if hasImpedance:
+                                    print(f"{dt.now().strftime('%d.%m.%Y-%H:%M:%S')} MISCALE|OMRON * Reading BLE data complete, finished BLE scan")
+                                    print(f"{unix_time};{weight:.1f};{impedance:.0f}")
+                                    exit()
+                                else:
+                                    # Stabilized weight captured; keep waiting in case impedance arrives
+                                    self.best_reading = (unix_time, weight, impedance)
             else:
                 print(f"{dt.now().strftime('%d.%m.%Y-%H:%M:%S')} MISCALE|S400|OMRON * Incorrect configuration in export2garmin.cfg file, finished BLE scan")
                 exit()
@@ -146,6 +150,11 @@ class miScale(btle.DefaultDelegate):
             scanner.start()
             scanner.process(self.ble_adapter_time)
             scanner.stop()
+            if self.best_reading is not None:
+                unix_time, weight, impedance = self.best_reading
+                print(f"{dt.now().strftime('%d.%m.%Y-%H:%M:%S')} MISCALE|OMRON * Reading BLE data complete, finished BLE scan")
+                print(f"{unix_time};{weight:.1f};{impedance:.0f}")
+                exit()
             if ble_adapter_check == "on" and not self.unique_dev_addresses:
                 dev_around += 1
                 if dev_around < self.ble_adapter_repeat:

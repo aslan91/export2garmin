@@ -202,8 +202,7 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 			if [[ -n $miscale_unixtime ]] ; then
 				source <(grep miscale_time_ $path/user/export2garmin.cfg)
 				miscale_os_unixtime=$(date +%s)
-				miscale_time_zone=$(printf '%.3s' "$(date +%z)")
-				miscale_offset_unixtime=$(( $miscale_unixtime + $miscale_time_zone * 3600 + $miscale_time_offset ))
+				miscale_offset_unixtime=$(( $miscale_unixtime + $miscale_time_offset ))
 				miscale_time_shift=$(( $miscale_os_unixtime - $miscale_offset_unixtime ))
 				miscale_absolute_shift=${miscale_time_shift#-}
 				if (( $miscale_absolute_shift < $miscale_time_unsync )) ; then
@@ -229,7 +228,7 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 					else echo "$(timenow) MISCALE|S400 * $miscale_time_dif s time difference, same or similar data already exists in miscale_backup.csv file"
 					fi
 				else echo "$(timenow) MISCALE|S400 * $miscale_time_shift s time difference, synchronize date and time scale"
-					echo "$(timenow) MISCALE|S400 * Time offset is set to $miscale_offset s"
+					echo "$(timenow) MISCALE|S400 * Time offset is set to $miscale_time_offset s"
 				fi
 			fi
 		fi
@@ -373,5 +372,5 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 		break
 	fi
 	# ponytail: sleep to prevent infinite fast-loop CPU/log flooding
-	sleep 10
+	sleep 3
 done
