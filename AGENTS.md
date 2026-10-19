@@ -32,6 +32,7 @@ Welcome, Agent! This repository is a fork of `RobertWojtowicz/export2garmin`, cu
   - `export2garmin.cfg`: Primary configuration (user weights, MAC addresses, Garmin credentials, feature flags).
   - `import_tokens.py`: Garmin OAuth token generator (MFA/2FA interactive login).
   - `miscale_backup.csv` & `omron_backup.csv`: Local tabular state logs.
+- **`tests/`**: Offline test suite covering Mi Scale 2 packet decoding, body composition metrics, Omron HEM-7155T bitwise decoding, blood pressure categorization, and shell pipeline contracts.
 
 ---
 
@@ -45,7 +46,6 @@ Welcome, Agent! This repository is a fork of `RobertWojtowicz/export2garmin`, cu
 2. **Process Locking & Stale PID Recovery**:
    - **Invariant**: If a previous run crashes, `import_data.sh` must verify whether the stored PID is alive (`kill -0 $pid`) with positive numeric validation, check process command line via `/proc/$pid/cmdline` to prevent stale locking on recycled PIDs, and resolve startup races before clearing locks. Stale locks must be cleared automatically (`cleanup_import_lock`) to prevent permanent service deadlock on unattended hosts.
 
-
 3. **Garmin API Throttling & Retry Backoff**:
    - Failed cloud uploads must be throttled. Never execute rapid retry loops against Garmin endpoints on network or auth errors.
    - Ensure Garmin client sessions are properly instantiated and cached rather than repeatedly re-authenticating per measurement row.
@@ -58,6 +58,7 @@ Welcome, Agent! This repository is a fork of `RobertWojtowicz/export2garmin`, cu
    - `miscale_ble.py` must wait for stabilized measurements (`isStabilized`) and never abort the BLE scan early on non-impedance packets. Weight readings without bio-impedance (e.g. socks, calluses) must be preserved and exported cleanly with calculated BMI.
    - `import_data.sh` must not apply redundant timezone hour offsets (`miscale_time_zone * 3600`) to timestamps parsed by `dt.timestamp()`, which are already in UTC epoch seconds.
    - Scale Clock Resilience: Mi Scale 2 loses RTC synchronization upon battery removal and broadcasts timestamps starting in epoch 1970. Both `miscale_ble.py` and `import_data.sh` must recognize uninitialized scale timestamps (`year < 2020` / `unix_time < 1577836800`) and fall back to the host's authoritative NTP timestamp so valid weigh-ins are never dropped due to false unsynchronization.
+   - Data Extraction Invariant: `import_data.sh` must extract scale data via strict regex matching (`grep -E '^[0-9]+;[0-9.]+;[0-9]+' | tail -n 1`) to reject multiline banner output and prevent bash arithmetic syntax errors.
 
 ---
 
@@ -69,9 +70,14 @@ Before committing changes:
 bash -n import_data.sh
 
 # 2. Validate Python syntax across all modules:
-python3 -m py_compile miscale/*.py omron/*.py user/*.py
+python3 -m py_compile miscale/*.py omron/*.py omron/deviceSpecific/*.py
 
-# 3. Dry-run single cycle execution (if on host with hardware/tokens):
+# 3. Run the automated test suite (27 offline unit tests):
+python3 -m unittest discover tests
+# or via pytest:
+uv run --with pytest pytest
+
+# 4. Dry-run single cycle execution (if on host with hardware/tokens):
 ./import_data.sh
 ```
 
@@ -89,7 +95,8 @@ python3 -m py_compile miscale/*.py omron/*.py user/*.py
 When completing work in this repository, verify:
 - [ ] Bash scripts pass `bash -n` syntax check.
 - [ ] Python files compile cleanly without syntax errors (`python -m py_compile`).
+- [ ] Automated test suite passes (`python3 -m unittest discover tests`).
 - [ ] No local `.cfg`, credentials, tokens, or CSV data files are staged in Git.
-- [ ] Only relevant, clean bugfixes and `AGENTS.md` are staged.
-- [ ] Commit message uses Conventional Commits format (e.g. `fix(import): ...`).
+- [ ] Only relevant, clean bugfixes, tests, and `AGENTS.md` are staged.
+- [ ] Commit message uses Conventional Commits format (e.g. `test: ...` or `fix(import): ...`).
 - [ ] Upstream diff is kept minimal.
