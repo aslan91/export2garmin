@@ -140,7 +140,7 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 			echo "$(timenow) MISCALE|S400 * Importing data from a BLE adapter"
 			if [[ $ble_check == *"incomplete"* ]] ; then
 				echo "$(timenow) MISCALE|S400 * Reading BLE data incomplete, repeat weighing"
-			else miscale_read=$(echo "$ble_check" | awk '{sub(/.*BLE scan/, ""); print substr($1,1)}')
+			else miscale_read=$(echo "$ble_check" | grep -E '^[0-9]+;[0-9.]+;[0-9]+' | tail -n 1)
 				miscale_unixtime=${miscale_read%%;*}
 			fi
 
@@ -151,12 +151,14 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 			miscale_s400_ble=$(python3 -B $path/miscale/s400_ble.py -a $miscale_hci)
 			if [[ $miscale_s400_ble == *"failed"* ]] ; then
 				echo "$(timenow) MISCALE|S400 * Reading BLE data failed, check configuration"
-			else miscale_read=$(echo "$miscale_s400_ble" | awk '{sub(/.*BLE scan/, ""); print substr($1,1)}')
+			else miscale_read=$(echo "$miscale_s400_ble" | grep -E '^to_import;[0-9]+;' | tail -n 1)
 
 			# Save raw data to miscale_backup file (Xiaomi Body Composition Scale S400)
-				miscale_unixtime=$(echo $miscale_read | awk -F';' '{print $2}')
-				echo "$(timenow) MISCALE|S400 * Saving import $miscale_unixtime to miscale_backup.csv file"
-				echo $miscale_read >> $miscale_backup
+				if [[ -n $miscale_read ]] ; then
+					miscale_unixtime=$(echo $miscale_read | awk -F';' '{print $2}')
+					echo "$(timenow) MISCALE|S400 * Saving import $miscale_unixtime to miscale_backup.csv file"
+					echo $miscale_read >> $miscale_backup
+				fi
 			fi
 
 		# Importing raw data from BLE, within a separate process and hci (Xiaomi Body Composition Scale S400)
@@ -182,12 +184,14 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 							miscale_s400_ble=$(python3 -B $path/miscale/s400_ble.py -a $miscale_hci)
 							if [[ $miscale_s400_ble == *failed* ]] ; then
 								echo "$(timenow) S400 * Reading BLE data failed, check configuration"
-							else miscale_read=$(echo "$miscale_s400_ble" | awk '{sub(/.*BLE scan/, ""); print substr($1,1)}')
+							else miscale_read=$(echo "$miscale_s400_ble" | grep -E '^to_import;[0-9]+;' | tail -n 1)
 
 								# Save raw data to miscale_backup file (Xiaomi Body Composition Scale S400)
-								miscale_unixtime=$(echo $miscale_read | awk -F';' '{print $2}')
-								echo "$(timenow) S400 * Saving import $miscale_unixtime to miscale_backup.csv file"
-								echo $miscale_read >> $miscale_backup
+								if [[ -n $miscale_read ]] ; then
+									miscale_unixtime=$(echo $miscale_read | awk -F';' '{print $2}')
+									echo "$(timenow) S400 * Saving import $miscale_unixtime to miscale_backup.csv file"
+									echo $miscale_read >> $miscale_backup
+								fi
 							fi
 						fi
 					fi
@@ -200,7 +204,7 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 
 		# Check time synchronization between scale and OS (Mi Body Composition Scale 2)
 		if [[ $switch_miscale == "on" && $switch_s400 == "off" ]] || [[ $switch_mqtt == "on" && $switch_s400 == "off" ]] ; then
-			if [[ -n $miscale_unixtime ]] ; then
+			if [[ -n $miscale_unixtime && $miscale_unixtime =~ ^[0-9]+$ ]] ; then
 				source <(grep miscale_time_ $path/user/export2garmin.cfg)
 				miscale_os_unixtime=$(date +%s)
 				if (( miscale_unixtime < 1577836800 )) ; then
