@@ -19,6 +19,9 @@ env/
 *.log
 *.lock
 user/*.csv
+user/*@*
+user/*.bak
+user/OLD*
 user/temp.log
 .env
 .env.*

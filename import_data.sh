@@ -86,8 +86,9 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 		if [[ $switch_miscale == "on" && $switch_mqtt == "off" ]] || [[ $switch_omron == "on" ]] || [[ $switch_s400 == "on" && $switch_s400_hci == "off" ]] ; then
 			unset $(compgen -v | grep '^ble_')
 			echo "$(timenow) SYSTEM * BLE adapter is ON in export2garmin.cfg file, check if available"
-			ble_check=$(python3 -B $path/miscale/miscale_ble.py)
-			if [[ $ble_check == *"failed"* ]] ; then
+			ble_check=$(python3 -B $path/miscale/miscale_ble.py 2>&1)
+			ble_exit=$?
+			if [[ $ble_exit -ne 0 || $ble_check == *"failed"* ]] ; then
 				echo "$(timenow) SYSTEM * BLE adapter  not working, skip scanning check if temp.log file exists"
 			else ble_status=ok
 				[[ $ble_check =~ (h.{21}\)) ]] && hci_mac=${BASH_REMATCH[1]}
@@ -139,7 +140,7 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 			echo "$(timenow) MISCALE|S400 * Importing data from a BLE adapter"
 			if [[ $ble_check == *"incomplete"* ]] ; then
 				echo "$(timenow) MISCALE|S400 * Reading BLE data incomplete, repeat weighing"
-			else miscale_read=$(echo $ble_check | awk '{sub(/.*BLE scan/, ""); print substr($1,1)}')
+			else miscale_read=$(echo "$ble_check" | awk '{sub(/.*BLE scan/, ""); print substr($1,1)}')
 				miscale_unixtime=${miscale_read%%;*}
 			fi
 
@@ -150,7 +151,7 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 			miscale_s400_ble=$(python3 -B $path/miscale/s400_ble.py -a $miscale_hci)
 			if [[ $miscale_s400_ble == *"failed"* ]] ; then
 				echo "$(timenow) MISCALE|S400 * Reading BLE data failed, check configuration"
-			else miscale_read=$(echo $miscale_s400_ble | awk '{sub(/.*BLE scan/, ""); print substr($1,1)}')
+			else miscale_read=$(echo "$miscale_s400_ble" | awk '{sub(/.*BLE scan/, ""); print substr($1,1)}')
 
 			# Save raw data to miscale_backup file (Xiaomi Body Composition Scale S400)
 				miscale_unixtime=$(echo $miscale_read | awk -F';' '{print $2}')
@@ -173,7 +174,7 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 					if [[ $ble_arg_hci == $s400_arg_hci && $ble_arg_hci2mac == "off" && $s400_arg_hci2mac == "off" ]] || [[ $ble_arg_mac == $s400_arg_mac && $ble_arg_hci2mac == "on" && $s400_arg_hci2mac == "on" ]]; then
 						echo "$(timenow) S400 * The same BLE adapters, check arg_hci or arg_mac parameter in export2garmin.cfg"
 					else ble_check=$(python3 -B $path/miscale/miscale_ble.py -a $s400_arg_hci -bt $s400_arg_hci2mac -mac $s400_arg_mac)
-						if [[ $ble_check == *"failed"* ]] ; then
+						if [[ $ble_exit -ne 0 || $ble_check == *"failed"* ]] ; then
 							echo "$(timenow) S400 * BLE adapter  not working, skip scanning"
 						else [[ $ble_check =~ (h.{21}\)) ]] && hci_mac=${BASH_REMATCH[1]}
 							echo "$(timenow) S400 * BLE adapter $hci_mac working, importing data from a BLE adapter"
@@ -181,7 +182,7 @@ while [[ $loop_count -eq 0 ]] || [[ $i -lt $loop_count ]] ; do
 							miscale_s400_ble=$(python3 -B $path/miscale/s400_ble.py -a $miscale_hci)
 							if [[ $miscale_s400_ble == *failed* ]] ; then
 								echo "$(timenow) S400 * Reading BLE data failed, check configuration"
-							else miscale_read=$(echo $miscale_s400_ble | awk '{sub(/.*BLE scan/, ""); print substr($1,1)}')
+							else miscale_read=$(echo "$miscale_s400_ble" | awk '{sub(/.*BLE scan/, ""); print substr($1,1)}')
 
 								# Save raw data to miscale_backup file (Xiaomi Body Composition Scale S400)
 								miscale_unixtime=$(echo $miscale_read | awk -F';' '{print $2}')

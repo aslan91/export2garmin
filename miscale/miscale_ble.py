@@ -143,6 +143,9 @@ class miScale(btle.DefaultDelegate):
                 time.sleep(1)
                 subprocess.run(["hciconfig", f"hci{ble_arg_hci_read}", "up"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 time.sleep(1)
+            except Exception as e:
+                print(f"{dt.now().strftime('%d.%m.%Y-%H:%M:%S')} * Connection failed: {e}")
+                break
         if con_error == 3 and not con_success:
             print(f"{dt.now().strftime('%d.%m.%Y-%H:%M:%S')} * Failed to connect to BLE adapter hci{ble_arg_hci_read}({ble_arg_mac_read}) by {con_error} attempts")
             print(f"{dt.now().strftime('%d.%m.%Y-%H:%M:%S')} * Finished BLE scan")
