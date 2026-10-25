@@ -1,6 +1,6 @@
 # Agent Guidelines for `export2garmin`
 
-Welcome, Agent! This repository is a fork of `RobertWojtowicz/export2garmin`, customized for automated health telemetry synchronization (Xiaomi/Mi Scale and Omron Blood Pressure) to Garmin Connect. It runs as a scheduled background service on a Raspberry Pi in the homelab environment.
+This repository is a fork of `RobertWojtowicz/export2garmin`, customized for automated health telemetry synchronization (Xiaomi/Mi Scale and Omron Blood Pressure) to Garmin Connect. It runs as a scheduled background service on a Raspberry Pi in the homelab environment.
 
 ---
 
@@ -63,6 +63,15 @@ Welcome, Agent! This repository is a fork of `RobertWojtowicz/export2garmin`, cu
 ---
 
 ## 4. Operational Verification & Testing Protocol
+
+### Scoped Silent Commands (Multi-Agent / OpenCode Workflow)
+> [!IMPORTANT]
+> **Python 3 + Bash (`import_data.sh`, `omron/omron_pairing.sh`) Mix**.
+
+Verpflichtend vor Abschluss ausführen:
+- **Python Syntax-Check:** `python -m py_compile <pfad/datei.py>` (z. B. `python -m py_compile miscale/miscale_ble.py`)
+- **Bash Syntax-Check:** `bash -n import_data.sh` (bzw. `bash -n <script.sh>`)
+- **Scoped Unit-Test:** `python -m unittest tests/test_import_pipeline.py -q` (oder `uv run --with pytest pytest tests/test_import_pipeline.py -q --tb=short --no-header`)
 
 Before committing changes:
 ```bash
