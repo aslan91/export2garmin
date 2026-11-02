@@ -1,13 +1,13 @@
 # Agent Guidelines for `export2garmin`
 
-This repository is a fork of `RobertWojtowicz/export2garmin`, customized for automated health telemetry synchronization (Xiaomi/Mi Scale and Omron Blood Pressure) to Garmin Connect. It runs as a scheduled background service on a Raspberry Pi in the homelab environment.
+This repository is a fork of `RobertWojtowicz/export2garmin`, customized for automated health telemetry synchronization (Xiaomi/Mi Scale and Omron Blood Pressure) to Garmin Connect. It runs as a continuous background daemon (`export2garmin.service`) on the Debian 13 (`amd64` Trixie) KVM Bot-VM (`VM 101`, `192.168.178.14`, `ssh pi` / `ssh bots`) on Proxmox VE 9.2 (`192.168.178.10`).
 
 ---
 
 ## 1. System Purpose & Core Architecture
 
 `export2garmin` orchestrates Bluetooth Low Energy (BLE) peripheral scanning, metric extraction, and cloud upload:
-- **Target Platform**: Raspberry Pi (Linux / Debian ARM) with BlueZ and Bluetooth adapter (`hci0`).
+- **Target Platform**: Debian 13 (`amd64` Trixie) KVM Bot-VM (`VM 101`, `192.168.178.14`, `ssh pi` / `ssh bots`, 2 vCPUs, 2048 MB RAM → 2560 MB at 16 GB) on Fujitsu Esprimo Q7010 (Proxmox VE 9.2, `192.168.178.10`) with BlueZ and USB-passthrough **TP-Link UB500 Plus** (`2357:0604`, Realtek `RTL8761BU`, `firmware-realtek`) as `hci0`.
 - **Data Sources**:
   - Xiaomi Mi Body Composition Scale 2 / S400 (weight, body fat, muscle mass, bone mass, visceral fat).
   - Omron Blood Pressure Monitors (M4/M7 Intelli IT: systolic, diastolic, pulse).
@@ -40,7 +40,7 @@ This repository is a fork of `RobertWojtowicz/export2garmin`, customized for aut
 
 1. **Upstream Fork Hygiene**:
    - This repository tracks upstream `https://github.com/RobertWojtowicz/export2garmin.git` on `master`.
-   - **Rule**: Commit **only** `AGENTS.md` and direct operational bugfixes. **Never commit tool-specific pointer files** (`CLAUDE.md`, `.cursorrules`, `.clinerules`, `.github/copilot-instructions.md`) to Git; keep local assistant pointers untracked via `.git/info/exclude`.
+   - **Rule**: Commit **only** `AGENTS.md` and direct operational bugfixes. **Never commit tool-specific pointer files** (`CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.clinerules`, `.github/copilot-instructions.md`) to Git; keep local assistant pointers untracked via `.git/info/exclude`.
    - Preserve upstream directory structures and naming conventions to avoid merge conflicts during upstream rebases.
 
 2. **Process Locking & Stale PID Recovery**:
@@ -92,9 +92,10 @@ uv run --with pytest pytest
 
 ---
 
-## 5. State Persistence, Secret Hygiene & Hardware Protection
+## 5. State Persistence, Secret Hygiene & Host Sandboxing
 
-- **SD Card Wear Minimization**: Temporary logs (`temp.log`) and lockfiles should target RAM-backed storage (`/tmp` or zram/log2ram) as configured in `switch_temp_path`.
+- **Storage Endurance & Lock Hygiene**: Temporary logs (`temp.log`) and lockfiles target RAM-backed `/tmp` (`PrivateTmp=true` / `switch_temp_path`) to minimize NVMe thin-pool write amplification on `VM 101`.
+- **Systemd & BLE Sandboxing (`export2garmin.service`)**: Runs on `VM 101` (`192.168.178.14`) with `CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW` and `AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW` (plus `setcap 'cap_net_raw,cap_net_admin+eip'` on `bluepy-helper`) for raw `hci0` BLE sockets, and cgroup eBPF LAN isolation permitting only local HA-DNS (`192.168.178.5` Keepalived VIP across `CT 102` `.11` and `RPi 3B+` `.12`) and public WAN.
 - **Atomic Operations**: CSV backups (`miscale_backup.csv`, `omron_backup.csv`) serve as local persistent ledgers with duplicate check via measurement timestamps.
 
 ---
